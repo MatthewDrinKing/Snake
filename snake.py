@@ -86,15 +86,56 @@ def show_high_scores(screen):
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
                 waiting = False
 
+# Pause Menu
+def pause_menu(screen):
+    menu_options = ["Continue", "Restart", "Quit to Main Menu"]
+    current_selection = 0
+    paused = True
+
+    while paused:
+        screen.fill(black)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP:
+                    current_selection = (current_selection - 1) % len(menu_options)
+                elif event.key == pygame.K_DOWN:
+                    current_selection = (current_selection + 1) % len(menu_options)
+                elif event.key == pygame.K_RETURN:
+                    if menu_options[current_selection] == "Continue":
+                        paused = False
+                    elif menu_options[current_selection] == "Restart":
+                        return "Restart"
+                    elif menu_options[current_selection] == "Quit to Main Menu":
+                        return "Quit"
+
+        for i, option in enumerate(menu_options):
+            color = green if i == current_selection else white
+            label = font.render(option, True, color)
+            screen.blit(label, (150, 100 + 30 * i))
+
+        pygame.display.update()
+
+# Generate Food
+def generate_food(snake_body):
+    while True:
+        food_pos = [random.randrange(1, 60)*10, random.randrange(1, 60)*10]
+        if food_pos not in snake_body:
+            return food_pos
+
 # Main Game Function
 def main_game(screen, difficulty):
     snake_speed = {"Easy": 5, "Normal": 10, "Hard": 15}[difficulty]
     snake_pos = [300, 300]
     snake_body = [[300, 300], [290, 300], [280, 300]]
-    food_pos = [random.randrange(1, 60)*10, random.randrange(1, 60)*10]
+    food_pos = generate_food(snake_body)
     food_spawn = True
     dx, dy = 0, -10
     score = 0
+    high_scores = load_high_scores()
+    high_score = high_scores[difficulty]
     clock = pygame.time.Clock()
 
     while True:
@@ -111,6 +152,13 @@ def main_game(screen, difficulty):
                     dx, dy = -10, 0
                 elif event.key == pygame.K_RIGHT and dx != -10:
                     dx, dy = 10, 0
+                elif event.key == pygame.K_ESCAPE:
+                    action = pause_menu(screen)
+                    if action == "Restart":
+                        main_game(screen, difficulty)
+                    elif action == "Quit":
+                        show_menu(screen)
+                        return
 
         snake_pos[0] += dx
         snake_pos[1] += dy
@@ -124,7 +172,7 @@ def main_game(screen, difficulty):
             snake_body.pop()
 
         if not food_spawn:
-            food_pos = [random.randrange(1, 60)*10, random.randrange(1, 60)*10]
+            food_pos = generate_food(snake_body)
             food_spawn = True
 
         if check_collision(snake_body):
@@ -134,9 +182,31 @@ def main_game(screen, difficulty):
         screen.fill(black)
         for block in snake_body:
             pygame.draw.rect(screen, green, pygame.Rect(block[0], block[1], 10, 10))
+        
+        # Draw the snake's face
+        head = snake_body[0]
+        eye_size = 2
+        eye_color = white
+        if dx == 10:  # Moving right
+            eye1_pos = (head[0] + 8, head[1] + 2)
+            eye2_pos = (head[0] + 8, head[1] + 8)
+        elif dx == -10:  # Moving left
+            eye1_pos = (head[0] + 2, head[1] + 2)
+            eye2_pos = (head[0] + 2, head[1] + 8)
+        elif dy == 10:  # Moving down
+            eye1_pos = (head[0] + 2, head[1] + 8)
+            eye2_pos = (head[0] + 8, head[1] + 8)
+        elif dy == -10:  # Moving up
+            eye1_pos = (head[0] + 2, head[1] + 2)
+            eye2_pos = (head[0] + 8, head[1] + 2)
+        pygame.draw.circle(screen, eye_color, eye1_pos, eye_size)
+        pygame.draw.circle(screen, eye_color, eye2_pos, eye_size)
+        
         pygame.draw.rect(screen, red, pygame.Rect(food_pos[0], food_pos[1], 10, 10))
         score_text = font.render(f"Score: {score}", True, white)
+        high_score_text = font.render(f"High Score: {high_score}", True, white)
         screen.blit(score_text, (10, 10))
+        screen.blit(high_score_text, (10, 40))
 
         pygame.display.update()
         clock.tick(snake_speed)
